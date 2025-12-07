@@ -178,8 +178,6 @@ def good_add_photo(message):
     # Сохраняем путь к файлу
     good_data['photo'] = src
     bot.reply_to(message, "Фото добавлено")
-    # text = good_data['title'] + '\n' + good_data['text'] + '\n'  + good_data['price']
-    # bot.send_photo(chat_id=message.chat.id, photo=open(src, 'rb'), caption=text)
 
 
 def good_set_type(message):

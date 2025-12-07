@@ -1,4 +1,4 @@
-#main.py
+# main.py
 import telebot
 from telebot.types import (
     InlineKeyboardMarkup, InlineKeyboardButton
@@ -59,6 +59,7 @@ def quest_n_answer(call):
     markup.add(InlineKeyboardButton(text='заглушка'))
     bot.send_message(chat_id=call.from_user.id, text='Выберите вопрос', reply_markup=markup)
 
+
 @bot.callback_query_handler(func=lambda call: call.data == 'ass_or_tea_meant')
 def ass_or_tea_meant(call):
     bot.answer_callback_query(call.id)
@@ -69,6 +70,7 @@ def ass_or_tea_meant(call):
         InlineKeyboardButton(text='Другое', callback_data='goods:other'),
     )
 
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith('goods:'))
 def show_goods(call):
     bot.answer_callback_query(call.id)
@@ -76,15 +78,17 @@ def show_goods(call):
     goods = select_ids_and_title_by_type(good_type)
     markup = InlineKeyboardMarkup(row_width=1)
     for good in goods:
-        markup.add(InlineKeyboardButton(text=good['title'], callback_data=f'select_good:{good['id']}'))
+        markup.add(InlineKeyboardButton(text=good['title'], callback_data=f'select_good:{good["id"]}'))
+
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('select_good:'))
 def select_good(call):
     bot.answer_callback_query(call.id)
     id = call.data.split(':')[1]
     data = select_good_by_id(id)
-    text = f'{data['title']}\n\n{data['text']}\n{data['price']}'
+    text = f'{data["title"]}\n\n{data["text"]}\n{data["price"]}'
     bot.send_photo(chat_id=call.from_user.id, photo=open(data['photo'], 'rb'), caption=text)
+
 
 if __name__ == '__main__':
     print('бот запущен')
