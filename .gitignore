@@ -111,3 +111,5 @@ logs/
 *.tmp
 *.swp
 *.bak
+*.jpg
+*.png

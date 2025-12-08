@@ -12,8 +12,11 @@ import logging
 # import traceback
 import config
 import os
+
+from config import DB_CONFIG
 from utility import get_user_data, add_qa, load_qa_dict, delete_qa
-import json
+from db import DatabaseManager
+# import json
 
 # Настройка логирования
 logging.basicConfig(
@@ -128,27 +131,43 @@ def good_manage(call):
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'good_add')
-def good_add(call):
+def good_set_type(call):
     bot.answer_callback_query(call.id)
-    bot.send_message(chat_id=call.from_user.id, text='Введи заголовок')
-    bot.register_next_step_handler(call.message, good_add_1)
+    markup = InlineKeyboardMarkup(row_width=1)
+    markup.add(
+        InlineKeyboardButton(text='Вязанные изделия', callback_data='good_set_type:0'),
+        InlineKeyboardButton(text='3D печать', callback_data='good_set_type:1'),
+        InlineKeyboardButton(text='Другое', callback_data='good_set_type:2'),
+    )
+    bot.send_message(chat_id=call.from_user.id, text='Выбери тип товара', reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('good_set_type:'))
+def good_set_type_2(call):
+    bot.answer_callback_query(call.id)
+    type = call.data.split(':')[1]
+    print(type)
+    good_data['type'] = type
+    good_type = {'0': 'Вязанные изделия', '1': '3D печать', '2': 'Другое',}
+    bot.send_message(chat_id=call.from_user.id, text=f'Выбран тип: {good_type[type]}\n\nВведи заголовок')
+    bot.register_next_step_handler(call.message, good_add)
+
+
+def good_add(message):
+    good_data['title'] = message.text
+    bot.send_message(chat_id=message.from_user.id, text=f'Заголовок: {message.text}\n\nВведи описание')
+    bot.register_next_step_handler(message, good_add_1)
 
 
 def good_add_1(message):
-    good_data['title'] = message.text
-    bot.send_message(chat_id=message.from_user.id, text='Введи описание')
+    good_data['text'] = message.text
+    bot.send_message(chat_id=message.from_user.id, text=f'Описание: {message.text[:30]}...\n\nВведи стоимость')
     bot.register_next_step_handler(message, good_add_2)
 
 
 def good_add_2(message):
-    good_data['text'] = message.text
-    bot.send_message(chat_id=message.from_user.id, text='Введи стоимость')
-    bot.register_next_step_handler(message, good_add_3)
-
-
-def good_add_3(message):
     good_data['price'] = message.text
-    bot.send_message(chat_id=message.from_user.id, text='Добавь фото')
+    bot.send_message(chat_id=message.from_user.id, text=f'Стоимость: {message.text}\n\nДобавь фото')
     bot.register_next_step_handler(message, good_add_photo)
 
 
@@ -177,25 +196,24 @@ def good_add_photo(message):
 
     # Сохраняем путь к файлу
     good_data['photo'] = src
-    bot.reply_to(message, "Фото добавлено")
 
+    db = DatabaseManager(DB_CONFIG)
+    print(db.add_good(
+        type=good_data['type'],
+        title=good_data['title'],
+        text=good_data['text'],
+        price=good_data['price'],
+        photo=good_data['photo'],
+        count=1
+    ))
+    type = {'0': 'Вязанные изделия', '1': '3D печать', '2': 'Другое',}
+    text = good_data['title'] + '\n\n' + good_data['text'] + '\n\n' + good_data['price'] + '\n\n' + "Тип товара: " + type[good_data['type']]
+    bot.send_photo(chat_id=message.chat.id, photo=open(good_data['photo'], 'rb'), caption=text)
 
-def good_set_type(message):
-    markup = InlineKeyboardMarkup(row_width=1)
-    markup.add(
-        InlineKeyboardButton(text='Вязанные изделия', callback_data='good_set_type:0'),
-        InlineKeyboardButton(text='3D печать', callback_data='good_set_type:1'),
-        InlineKeyboardButton(text='Другое', callback_data='good_set_type:2'),
-    )
-    bot.send_message(chat_id=message.chat.id, text='Выбери тип товара', reply_markup=markup)
+    bot.send_message(chat_id=message.from_user.id, text='Товар добавлен')
 
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith('good_set_type:'))
-def good_set_type_2(call):
-    bot.answer_callback_query(call.id)
-    type = call.data.split(':')[1]
-    text = good_data['title'] + '\n' + good_data['text'] + '\n'  + good_data['price'] + '\n' + type
-    bot.send_photo(chat_id=call.chat.id, photo=open(good_data['photo'], 'rb'), caption=text)
+    user_data = get_user_data(message.from_user.id)
+    return show_start_menu(user_data)
 
 if __name__ == '__main__':
     print('бот запущен')
